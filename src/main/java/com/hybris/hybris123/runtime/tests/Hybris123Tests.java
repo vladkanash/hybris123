@@ -6,13 +6,41 @@ package com.hybris.hybris123.runtime.tests;
  * Please see http://www.sap.com/corporate-en/legal/copyright/index.epx for additional trademark information and notices.
  * This sample code is provided for the purpose of these guided tours only and is not intended to be used in a production environment.
  */
+
+import io.github.bonigarcia.wdm.WebDriverManager;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.Wait;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
-import static com.hybris.hybris123.runtime.tests.Hybris123Tests.SeleniumHelper.*;
-
-import java.awt.GraphicsEnvironment;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.awt.*;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,6 +53,7 @@ import java.net.CookieManager;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,81 +66,24 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
-import java.time.Duration;
-
-import javax.annotation.ManagedBean;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
-import org.apache.commons.io.filefilter.WildcardFileFilter;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.firefox.FirefoxDriver;
-import org.openqa.selenium.ie.InternetExplorerDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
-import org.openqa.selenium.support.ui.Select;
-import org.openqa.selenium.support.ui.Wait;
-import org.openqa.selenium.interactions.Actions;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
-import org.openqa.selenium.Dimension;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
-
-// debug
-import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
-
-
-
-/*
- * © 2017, © 2018, © 2019 SAP SE or an SAP affiliate company.
- */
-
-
-
-
+import static com.hybris.hybris123.runtime.tests.Hybris123Tests.SeleniumHelper.*;
 
 /**
  * These tests check on your progress thru hybris123
  */
+@SuppressWarnings({"FieldCanBeLocal", "WeakerAccess", "unused", "PlaceholderCountMatchesArgumentCount"})
 public class Hybris123Tests {
     private static final Logger LOG = LoggerFactory.getLogger(Hybris123Tests.class);
     private static boolean WAITONFAIL = false;
 
-
-/*
-SeleniumHelper.java */
-
-
-
-
-
-
+    @SuppressWarnings({"WeakerAccess", "unused", "DuplicateExpressions", "Duplicates", "UnusedReturnValue"})
     public static class SeleniumHelper {
         private static final Logger LOG = LoggerFactory.getLogger(SeleniumHelper.class);
         private static WebDriver dvr = null;
@@ -122,17 +94,16 @@ SeleniumHelper.java */
         private static Wait<WebDriver> wait;
         private static Wait<WebDriver> longWait;
         private static int PAUSE_MS = 2000;
-        private static int PAUSE_FOR_SERVER_START_MS  = 120000;
+        private static int PAUSE_FOR_SERVER_START_MS = 120000;
         private static int PAUSE_BETWEEN_KEYS_MS = 50;
 
         private static int NORMAL_WAIT_S = 10;
         private static int LONG_WAIT_S = 240;
         private static int POLLING_RATE_S = 2;
-        private static boolean WINDOWS = (System.getProperty("os.name")!=null)? System.getProperty("os.name").toLowerCase().contains("windows") : false;
-        private static boolean OSX = (System.getProperty("os.name")!=null)? System.getProperty("os.name").toLowerCase().contains("mac") : false;
+        private static boolean WINDOWS = (System.getProperty("os.name") != null) && System.getProperty("os.name").toLowerCase().contains("windows");
+        private static boolean OSX = (System.getProperty("os.name") != null) && System.getProperty("os.name").toLowerCase().contains("mac");
 
-
-        public static boolean canLoginToHybrisCommerce()  {
+        public static boolean canLoginToHybrisCommerce() {
             try {
                 waitForConnectionToOpen("https://localhost:9002/login.jsp", PAUSE_FOR_SERVER_START_MS);
                 getDriver().get("https://localhost:9002/login.jsp");
@@ -156,17 +127,17 @@ SeleniumHelper.java */
             return false;
         }
 
-        public static boolean loginToBackOffice(String ... language) {
+        public static boolean loginToBackOffice(String... language) {
             try {
                 pauseMS(PAUSE_MS);
                 // Allow time for server to start
                 waitForConnectionToOpen("https://localhost:9002/backoffice", PAUSE_FOR_SERVER_START_MS);
                 getDriver().get("https://localhost:9002/backoffice");
-                if (language.length == 0){
+                if (language.length == 0) {
                     Select s = new Select(findElement(By.xpath("//select")));
                     s.selectByVisibleText("English");
                 }
-                if (language.length == 1){
+                if (language.length == 1) {
                     Select s = new Select(findElement(By.xpath("//select")));
                     s.selectByVisibleText(language[0]);
                 }
@@ -183,7 +154,7 @@ SeleniumHelper.java */
             } catch (Exception e) {
                 // debug
                 e.printStackTrace();
-                String callingMethod =Thread.currentThread().getStackTrace()[2].getMethodName();
+                String callingMethod = Thread.currentThread().getStackTrace()[2].getMethodName();
                 Hybris123Tests.fail(callingMethod, "Connect Exception");
             }
             return false;
@@ -192,8 +163,7 @@ SeleniumHelper.java */
         public static void searchForConcertInBackoffice() {
             try {
                 waitForThenDoBackofficeSearch("Concert");
-            }
-            catch (Exception exc) {
+            } catch (Exception exc) {
                 if (!findElements(By.name("j_username")).isEmpty()) {
                     loginToBackOffice("Deutsch");
                     waitForThenClickMenuItem("System");
@@ -206,24 +176,22 @@ SeleniumHelper.java */
         private static void waitForThenDoBackofficeSearch(String search, String xp) {
             waitUntilElement(By.xpath(xp));
             pauseMS(PAUSE_MS);
-            sendKeysSlowly(findElement(By.xpath(xp)), search+Keys.RETURN);
+            sendKeysSlowly(findElement(By.xpath(xp)), search + Keys.RETURN);
             waitUntilElement(By.xpath("//button[contains(@class, 'yw-textsearch-searchbutton')]"));
             pauseMS(PAUSE_MS);
-            scrollToThenClick( findElement(By.xpath(xp)));
+            scrollToThenClick(findElement(By.xpath(xp)));
         }
 
         public static void waitForThenDoBackofficeSearch(String search) {
             pauseMS(PAUSE_MS);
             if (VersionHelper.getVersion().equals(Version.V6000)) {
-                if (search.length()==0) {// 6.0 Default search does not work; need to expand it like this
+                if (search.length() == 0) {// 6.0 Default search does not work; need to expand it like this
                     waitForthenScrollToThenClick("//button[contains(@class, 'yw-toggle-advanced-search')]");
                     pauseMS(PAUSE_MS);
                     waitForthenScrollToThenClick("//button[contains(@class, 'yw-textsearch-searchbutton')]");
-                }
-                else
+                } else
                     waitForThenDoBackofficeSearch(search, "//input[contains(@class, 'yw-textsearch-searchbox')]");
-            }
-            else
+            } else
                 waitForThenDoBackofficeSearch(search, "//input[contains(@class, 'z-bandbox-input')]");
             pauseMS(PAUSE_MS);
         }
@@ -237,7 +205,8 @@ SeleniumHelper.java */
             ((JavascriptExecutor) getDriver()).executeScript("arguments[0].scrollIntoView(true);", e);
             try {
                 Thread.sleep(500);
-            } catch (InterruptedException e1) {}
+            } catch (InterruptedException ignored) {
+            }
             ((JavascriptExecutor) getDriver()).executeScript("arguments[0].click();", e);
         }
 
@@ -254,10 +223,10 @@ SeleniumHelper.java */
             getDriver().switchTo().alert().accept();
         }
 
-        public static WebElement waitForConstraintsMenu(){
+        public static WebElement waitForConstraintsMenu() {
             try {
                 wait.until((WebDriver webDriver) -> findElements(By.xpath("//span[@class='z-tree-icon']")).size() == 3);
-            } catch(Exception e){
+            } catch (Exception e) {
                 // 6.1 and before requires clicking an extra top level menu entry "Constraint"
                 waitForthenScrollToThenClick("//span[@class='z-tree-icon']");
                 wait.until((WebDriver webDriver) -> findElements(By.xpath("//span[@class='z-tree-icon']")).size() == 3);
@@ -267,11 +236,11 @@ SeleniumHelper.java */
             return we.get(1);
         }
 
-        public static void waitForTagXWithAttributeYWithValueZThenClick( String tag, String att, String value){
+        public static void waitForTagXWithAttributeYWithValueZThenClick(String tag, String att, String value) {
             try {
                 pauseMS(PAUSE_MS);
-                waitForthenScrollToThenClick("//"+tag+"[@"+att+"='"+value+"']");
-            } catch(Exception e) {
+                waitForthenScrollToThenClick("//" + tag + "[@" + att + "='" + value + "']");
+            } catch (Exception e) {
                 LOG.error(e.getMessage());
             }
         }
@@ -292,9 +261,9 @@ SeleniumHelper.java */
             pauseMS(2000);
             JavascriptExecutor js = (JavascriptExecutor) dvr;
 
-            gs = gs.replaceAll("\\n", "\\\\"+"n");
+            gs = gs.replaceAll("\\n", "\\\\" + "n");
 
-            js.executeScript("arguments[0].CodeMirror.setValue('"+gs+"');", queryInput);
+            js.executeScript("arguments[0].CodeMirror.setValue('" + gs + "');", queryInput);
             // Note some users have noted that they need the following line instead of the previous one
             //js.executeScript("arguments[0].CodeMirror.setValue(\""+gs+"\");", queryInput);
 
@@ -309,7 +278,7 @@ SeleniumHelper.java */
 
             WebElement queryInput = waitUntilElement(By.xpath("//div[contains(@class, 'CodeMirror')]"));
             JavascriptExecutor js = (JavascriptExecutor) dvr;
-            js.executeScript("arguments[0].CodeMirror.setValue('"+fq+"');", queryInput);
+            js.executeScript("arguments[0].CodeMirror.setValue('" + fq + "');", queryInput);
             scrollToThenClick(findElement(By.xpath("//button[@id='buttonSubmit1']")));
             pauseMS(PAUSE_MS);
             scrollToThenClick(findElement(By.xpath("//a[@id='nav-tab-3']")));
@@ -320,27 +289,26 @@ SeleniumHelper.java */
             return true;
         }
 
-        public  static boolean waitFor(String tag, String text) {
+        public static boolean waitFor(String tag, String text) {
             try {
-                waitUntilElement(By.xpath("//"+tag+"[text()='"+text+"']"));
+                waitUntilElement(By.xpath("//" + tag + "[text()='" + text + "']"));
                 return true;
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 if (text.equals("Import finished successfully")) {
-                    waitUntilElement(By.xpath("//"+tag+"[text()='Import wurde erfolgreich abgeschlossen']"));
+                    waitUntilElement(By.xpath("//" + tag + "[text()='Import wurde erfolgreich abgeschlossen']"));
                     return true;
                 }
-                throw new NoSuchElementException("Text not found in  waitFor: "+text);
+                throw new NoSuchElementException("Text not found in  waitFor: " + text);
             }
         }
 
         public static boolean waitForTagContaining(String tag, String text) {
-            waitUntilElement(By.xpath("//"+tag+"[contains(text(),'"+text+"')]"));
+            waitUntilElement(By.xpath("//" + tag + "[contains(text(),'" + text + "')]"));
             return true;
         }
 
         public static boolean waitForImageWithTitleThenClick(String title) {
-            waitForthenScrollToThenClick("//img[@title='"+title+"']");
+            waitForthenScrollToThenClick("//img[@title='" + title + "']");
             return true;
         }
 
@@ -351,7 +319,7 @@ SeleniumHelper.java */
         }
 
         public static boolean waitForThenUpdateInputField(String from, String to) {
-            WebElement e = waitUntilElement(By.xpath("//input[@value='"+from+"']"));
+            WebElement e = waitUntilElement(By.xpath("//input[@value='" + from + "']"));
             clearField(e);
 
             sendKeysSlowly(e, to);
@@ -363,31 +331,29 @@ SeleniumHelper.java */
         public static boolean waitForThenClick(String tag, String text) {
             pauseMS(PAUSE_MS);
             try {
-                waitForthenScrollToThenClick("//"+tag+"[text()='"+text+"']");
-            }
-            catch(Exception e) {
-                LOG.debug("Not found " +"//"+tag+"[text()='"+text+"']. If 6.2 or eariler and span, will try for div");
+                waitForthenScrollToThenClick("//" + tag + "[text()='" + text + "']");
+            } catch (Exception e) {
+                LOG.debug("Not found " + "//" + tag + "[text()='" + text + "']. If 6.2 or eariler and span, will try for div");
             }
 
             Version v = VersionHelper.getVersion();
-            if (tag.equals("span") && v.compareTo(Version.V6200) <= 0){
+            if (tag.equals("span") && v.compareTo(Version.V6200) <= 0) {
                 try {
-                    waitForthenScrollToThenClick("//div[text()='"+text+"']");
-                }
-                catch(Exception e) {
-                    LOG.debug("Not found " +"//div[text()='"+text+"']");
+                    waitForthenScrollToThenClick("//div[text()='" + text + "']");
+                } catch (Exception e) {
+                    LOG.debug("Not found " + "//div[text()='" + text + "']");
                 }
             }
             return true;
         }
 
         public static boolean waitForValue(String tag, String text) {
-            waitUntilElement(By.xpath("//"+tag+"[@value='"+text+"']"));
+            waitUntilElement(By.xpath("//" + tag + "[@value='" + text + "']"));
             return true;
         }
 
-        public static Boolean waitForExtensionListing(String extensionName){
-            return waitUntilElement(By.xpath("//td[@data-extensionname='"+extensionName+"']")) != null;
+        public static Boolean waitForExtensionListing(String extensionName) {
+            return waitUntilElement(By.xpath("//td[@data-extensionname='" + extensionName + "']")) != null;
         }
 
         public static void accessBackofficeProducts() {
@@ -414,10 +380,9 @@ SeleniumHelper.java */
         public static void waitForThenClickDotsBySpan(String text) {
             pauseMS(PAUSE_MS);
             try {
-                waitFor("span",text);
-            }
-            catch(Exception e) { // 6.2, 6.1 expect a div rather than a span
-                waitFor("div",text);
+                waitFor("span", text);
+            } catch (Exception e) { // 6.2, 6.1 expect a div rather than a span
+                waitFor("div", text);
             }
             WebElement dots = findElements(By.xpath("//td[contains(@class, 'ye-actiondots')]")).get(2);
             scrollToThenClick(dots);
@@ -427,36 +392,32 @@ SeleniumHelper.java */
             pauseMS(PAUSE_MS);
             try {
                 waitForthenScrollToThenClick("//span[text()='" + spanText + "']");
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 if (spanText.equals("Concert")) {// 6.2 expects div with Konzert rather than span with Concert
                     waitForthenScrollToThenClick("//div[text()='Konzert']");
-                }
-                else {
+                } else {
                     waitForthenScrollToThenClick("//div[text()='" + spanText + "']");
                 }
             }
         }
 
-        public static void waitForThenAndClickSpan(String spanText, String ... spanOptionalText) {
+        public static void waitForThenAndClickSpan(String spanText, String... spanOptionalText) {
             pauseMS(PAUSE_MS);
             try {
                 waitForthenScrollToThenClick("//span[text()='" + spanText + "']");
-            }
-            catch(Exception e){
-                if (spanOptionalText!=null){
+            } catch (Exception e) {
+                if (spanOptionalText != null) {
                     waitForthenScrollToThenClick("//span[text()='" + spanText + "'] | //span[text()='" + spanOptionalText[0] + "'] ");
                 }
             }
         }
 
-        public static void waitForThenAndClickDiv(String divText, String ... divOptionalText) {
+        public static void waitForThenAndClickDiv(String divText, String... divOptionalText) {
             pauseMS(PAUSE_MS);
             try {
                 waitForthenScrollToThenClick("//div[text()='" + divText + "']");
-            }
-            catch(Exception e){
-                if (divOptionalText!=null){
+            } catch (Exception e) {
+                if (divOptionalText != null) {
                     waitForthenScrollToThenClick("//div[text()='" + divText + "'] | //div[text()='" + divOptionalText[0] + "'] ");
                 }
             }
@@ -483,8 +444,7 @@ SeleniumHelper.java */
                 try {
                     wait.until(webDriver -> findElement(By.xpath("//*[contains(text(), 'Initialize system')]")));
                     return;
-                }
-                catch (TimeoutException exc) {
+                } catch (TimeoutException exc) {
                     // repeat initialization
                     if (i < 2) {
                         navigateTo("https://localhost:9002/platform/init");
@@ -503,17 +463,18 @@ SeleniumHelper.java */
                 pauseMS(100);
             }
         }
+
         public static void waitForNoificationToClose() {
             pauseMS();
         }
 
         public static void waitForAllInputFields(int n) {
-            wait.until(webDriver -> findElements(By.xpath("//input[@type='text']")).size()>=n );
+            wait.until(webDriver -> findElements(By.xpath("//input[@type='text']")).size() >= n);
             pauseMS(PAUSE_MS);
         }
 
 
-        public static  void navigateTo(String url) {
+        public static void navigateTo(String url) {
             getDriver().navigate().to(url);
             pauseMS(PAUSE_MS);
         }
@@ -533,17 +494,14 @@ SeleniumHelper.java */
             WebElement queryInput = findElement(By.xpath("//div[contains(@class, 'CodeMirror')]"));
             JavascriptExecutor js = (JavascriptExecutor) dvr;
             impex = impex.replaceAll("\\n", "\\\\n");
-            js.executeScript("arguments[0].CodeMirror.setValue('"+impex+"');", queryInput);
+            js.executeScript("arguments[0].CodeMirror.setValue('" + impex + "');", queryInput);
 
             try {
                 waitForthenScrollToThenClick("//input[@value='Import content']");
-                return;
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 waitForthenScrollToThenClick("//input[@value='Inhalt importieren']");
             }
         }
-
 
 
         public static void setDriver(WebDriver wd) {
@@ -552,6 +510,7 @@ SeleniumHelper.java */
 
         /**
          * Used for cleanup jobs concerning the WebDriver. Can return null, as opposed to getDriver().
+         *
          * @return the WebDriver instance or null
          */
         public static WebDriver peakDriver() {
@@ -561,8 +520,7 @@ SeleniumHelper.java */
         private static int parseString(String s) {
             try {
                 return Integer.parseInt(s);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 return -1;
             }
         }
@@ -596,28 +554,27 @@ SeleniumHelper.java */
             if (WINDOWS) {
                 dvr = new ChromeDriver(chromeOptions);
             } else {
-                int seleniumPort = parseString( System.getProperty("selenium.port") );
-                if (seleniumPort!=-1){
+                int seleniumPort = parseString(System.getProperty("selenium.port"));
+                if (seleniumPort != -1) {
                     LOG.debug("Opening chromedriver on port" + seleniumPort);
                     ChromeDriverService cds =
                             new ChromeDriverService.Builder().usingDriverExecutable(
-                                    new File( "./chromedriver"))
+                                    new File("./chromedriver"))
                                     .usingPort(seleniumPort)
                                     .build();
 
                     dvr = new ChromeDriver(cds, chromeOptions);
-                }
-                else {
+                } else {
                     dvr = new ChromeDriver(chromeOptions);
                 }
             }
 
-            wait = new FluentWait<WebDriver>(dvr)
+            wait = new FluentWait<>(dvr)
                     .withTimeout(Duration.ofSeconds(NORMAL_WAIT_S))
                     .pollingEvery(Duration.ofSeconds(POLLING_RATE_S))
                     .ignoring(NoSuchElementException.class);
 
-            longWait = new FluentWait<WebDriver>(dvr)
+            longWait = new FluentWait<>(dvr)
                     .withTimeout(Duration.ofSeconds(LONG_WAIT_S))
                     .pollingEvery(Duration.ofSeconds(POLLING_RATE_S))
                     .ignoring(NoSuchElementException.class);
@@ -625,7 +582,7 @@ SeleniumHelper.java */
             return dvr;
         }
 
-        public static boolean checkTestSuiteXMLMatches(String s){
+        public static boolean checkTestSuiteXMLMatches(String s) {
             try {
                 String fileContents = FileHelper.getContents("../hybris/log/junit/TESTS-TestSuites.xml").replace("\n", "").replace("\r", "");
                 boolean match = fileContents.matches(s);
@@ -640,7 +597,7 @@ SeleniumHelper.java */
 
         public static String callCurl(String... curl) {
             byte[] bytes = new byte[100];
-            StringBuffer response = new StringBuffer();
+            StringBuilder response = new StringBuilder();
             try {
                 ProcessBuilder pb = new ProcessBuilder(curl);
                 Process p = pb.start();
@@ -648,7 +605,7 @@ SeleniumHelper.java */
                 BufferedInputStream bis = new BufferedInputStream(is);
                 while (bis.read(bytes, 0, 100) != -1) {
                     for (byte b : bytes) {
-                        response.append((char)b);
+                        response.append((char) b);
                     }
                     Arrays.fill(bytes, (byte) 0);
                 }
@@ -665,55 +622,55 @@ SeleniumHelper.java */
                     !ste[i].getMethodName().startsWith("gitRepoOk") &&
                     !ste[i].getMethodName().startsWith("loginAndCheckForConcertToursExtension"))
                 i++;
-            return  ste[i].getMethodName();
+            return ste[i].getMethodName();
         }
 
         public static void modifyABandToHaveNegativeAlbumSales() {
             waitForThenClickMenuItem("System");
             waitForThenClickMenuItem("Types");
             waitForThenDoBackofficeSearch("Band");
-            waitForThenClick("span","Band");  // 6.2 expects div
+            waitForThenClick("span", "Band");  // 6.2 expects div
             waitForImageWithTitleThenClick("Search by type");
             waitForThenDoBackofficeSearch(""); // 6.2
-            waitForThenClick("span","The Quiet");// 6.2 expects div
+            waitForThenClick("span", "The Quiet");// 6.2 expects div
             waitForThenUpdateInputField("1200", "-1200");
-            waitForThenClick("button","Save");
+            waitForThenClick("button", "Save");
         }
 
         public static void tryToViolateTheNewConstraint() {
             waitForThenClickMenuItem("Types");
             waitForThenDoBackofficeSearch("Band");
-            waitForThenClick("span","Band");// 6.2 expects div
+            waitForThenClick("span", "Band");// 6.2 expects div
             waitForImageWithTitleThenClick("Search by type");
             waitForThenDoBackofficeSearch(""); // 6.2
-            waitForThenClick("span","The Quiet"); // 6.2 expects div
+            waitForThenClick("span", "The Quiet"); // 6.2 expects div
             waitForThenUpdateInputField("1200", "-1200");
-            waitForThenClick("button","Save");
-            waitFor("div","You have 1 Validation Errors");
+            waitForThenClick("button", "Save");
+            waitFor("div", "You have 1 Validation Errors");
         }
 
         public static void tryToViolateTheNewCustomConstraint() {
             waitForThenClickMenuItem("Types");
-            waitForThenDoBackofficeSearch("Band"+Keys.RETURN);
-            waitForThenClick("span","Band");// 6.2 expects div
+            waitForThenDoBackofficeSearch("Band" + Keys.RETURN);
+            waitForThenClick("span", "Band");// 6.2 expects div
             waitForImageWithTitleThenClick("Search by type");
             waitForThenDoBackofficeSearch("");//6.2
-            waitForThenClick("span","The Quiet");// 6.2 expects div
-            waitForThenUpdateInputField("English choral society specialising in beautifully arranged, soothing melodies and songs", "Lorem Ipsum"+Keys.RETURN);
-            waitForThenClick("button","Save");
-            waitFor("div","You have 1 Validation Errors");
+            waitForThenClick("span", "The Quiet");// 6.2 expects div
+            waitForThenUpdateInputField("English choral society specialising in beautifully arranged, soothing melodies and songs", "Lorem Ipsum" + Keys.RETURN);
+            waitForThenClick("button", "Save");
+            waitFor("div", "You have 1 Validation Errors");
         }
 
         public static void reloadConstraints() {
             waitForThenClickMenuItem("Constraints");
-            waitForTagXWithAttributeYWithValueZThenClick("img","title","Reload validation engine");
-            waitForThenClick("button","Yes");
+            waitForTagXWithAttributeYWithValueZThenClick("img", "title", "Reload validation engine");
+            waitForThenClick("button", "Yes");
             pauseMS();
         }
 
-        public static void pauseMS(long ... pause) {
+        public static void pauseMS(long... pause) {
             try {
-                if (pause.length==0)
+                if (pause.length == 0)
                     Thread.sleep(6000);
                 else
                     Thread.sleep(pause[0]);
@@ -734,6 +691,7 @@ SeleniumHelper.java */
                 pauseMS(PAUSE_BETWEEN_KEYS_MS);
             }
         }
+
         private static void clearField(WebElement elem, String newInput) {
             elem.clear();
             pauseMS(PAUSE_BETWEEN_KEYS_MS);
@@ -747,9 +705,9 @@ SeleniumHelper.java */
                 return;
             }
 
-            waitForTagXWithAttributeYWithValueZThenClick("a","class","ya-create-type-selector-button z-toolbarbutton");
+            waitForTagXWithAttributeYWithValueZThenClick("a", "class", "ya-create-type-selector-button z-toolbarbutton");
             waitForConstraintsMenu();
-            waitForTagXWithAttributeYWithValueZThenClick("tr","title","Min constraint");
+            waitForTagXWithAttributeYWithValueZThenClick("tr", "title", "Min constraint");
             waitForAllInputFields(20);
 
             WebElement idInputField = findElements(By.xpath("//span[text()='ID:']/following::input[1]")).get(0);
@@ -762,63 +720,18 @@ SeleniumHelper.java */
             scrollToThenClick(dots);
             pauseMS(PAUSE_MS);
             WebElement identifierField = waitUntilElements(By.xpath("//span[text()='Identifier']/following::input[2]")).get(0);
-            identifierField.sendKeys("Band"+Keys.RETURN);
-            waitForThenClick("span","Band");// 6.2 expects div
-            waitForThenClick("button","Select (1)");
+            identifierField.sendKeys("Band" + Keys.RETURN);
+            waitForThenClick("span", "Band");// 6.2 expects div
+            waitForThenClick("button", "Select (1)");
             pauseMS(PAUSE_MS);
 
             WebElement attributeDescField = findElements(By.xpath("//span[text()='Attribute descriptor to validate:']/following::input[1]")).get(0);
             sendKeysSlowly(attributeDescField, "album sales");
             attributeDescField.sendKeys(Keys.DOWN);
 
-            waitForThenClick("span","Band [Band] -> album sales [albumSales]");
+            waitForThenClick("span", "Band [Band] -> album sales [albumSales]");
             scrollToBottom();
-            waitForThenClick("button","Done");
-            waitForNoificationToClose();
-
-            // Add a message to the the new min constraint
-            waitForThenDoBackofficeSearch(id);
-            waitForThenClick("span", id);// 6.2 expects div
-            waitForTagXWithAttributeYWithValueZThenClick("button","class","yw-expandCollapse z-button");
-            pauseMS(PAUSE_MS);
-
-            WebElement errorMessageField = findElements(By.xpath("//div[text()='Is used in the following constraint groups']/preceding::input[1]")).get(0);
-            sendKeysSlowly(errorMessageField, "Album sales must not be negative"+Keys.RETURN);
-            waitForThenClick("button","Save");
-            waitForNoificationToClose();
-        }
-
-        public static void addNewMinConstraint61(String id) {
-            waitForTagXWithAttributeYWithValueZThenClick("a","class","ya-create-type-selector-button z-toolbarbutton");
-
-            waitForConstraintsMenu();
-
-            waitForTagXWithAttributeYWithValueZThenClick("tr","title","Min constraint");
-            pauseMS(1000);
-
-            WebElement idInputField = findElements(By.xpath("//span[text()='ID:']/following::input[1]")).get(0);
-            clearField(idInputField, id);
-
-            WebElement minimalValueField = findElements(By.xpath("//span[text()='Minimal value:']/following::input[1]")).get(0);
-            clearField(minimalValueField, "0");
-
-            WebElement enclosingTypeField = findElements(By.xpath("//span[text()='Enclosing Type:']/following::input[1]")).get(0);
-            enclosingTypeField.sendKeys("Band"+Keys.RETURN);
-
-            pauseMS(1000);
-            WebElement dots = findElements(By.xpath("//span[text()='Enclosing Type:']/following::i[1]")).get(0);
-            scrollToThenClick(dots);
-
-            waitForThenClick("span","Band [Band]");// 6.2 expects div
-            pauseMS(PAUSE_MS);
-
-            WebElement attributeDescField = findElements(By.xpath("//span[text()='Attribute descriptor to validate:']/following::input[1]")).get(0);
-            sendKeysSlowly(attributeDescField, "album sales");
-            attributeDescField.sendKeys(Keys.DOWN);
-
-            waitForThenClick("span","Band [Band] -> album sales [albumSales]");
-            scrollToBottom();
-            waitForThenClick("button","Done");
+            waitForThenClick("button", "Done");
             waitForNoificationToClose();
 
             // Add a message to the the new min constraint
@@ -828,8 +741,53 @@ SeleniumHelper.java */
             pauseMS(PAUSE_MS);
 
             WebElement errorMessageField = findElements(By.xpath("//div[text()='Is used in the following constraint groups']/preceding::input[1]")).get(0);
-            sendKeysSlowly(errorMessageField, "Album sales must not be negative"+Keys.RETURN);
-            waitForThenClick("button","Save");
+            sendKeysSlowly(errorMessageField, "Album sales must not be negative" + Keys.RETURN);
+            waitForThenClick("button", "Save");
+            waitForNoificationToClose();
+        }
+
+        public static void addNewMinConstraint61(String id) {
+            waitForTagXWithAttributeYWithValueZThenClick("a", "class", "ya-create-type-selector-button z-toolbarbutton");
+
+            waitForConstraintsMenu();
+
+            waitForTagXWithAttributeYWithValueZThenClick("tr", "title", "Min constraint");
+            pauseMS(1000);
+
+            WebElement idInputField = findElements(By.xpath("//span[text()='ID:']/following::input[1]")).get(0);
+            clearField(idInputField, id);
+
+            WebElement minimalValueField = findElements(By.xpath("//span[text()='Minimal value:']/following::input[1]")).get(0);
+            clearField(minimalValueField, "0");
+
+            WebElement enclosingTypeField = findElements(By.xpath("//span[text()='Enclosing Type:']/following::input[1]")).get(0);
+            enclosingTypeField.sendKeys("Band" + Keys.RETURN);
+
+            pauseMS(1000);
+            WebElement dots = findElements(By.xpath("//span[text()='Enclosing Type:']/following::i[1]")).get(0);
+            scrollToThenClick(dots);
+
+            waitForThenClick("span", "Band [Band]");// 6.2 expects div
+            pauseMS(PAUSE_MS);
+
+            WebElement attributeDescField = findElements(By.xpath("//span[text()='Attribute descriptor to validate:']/following::input[1]")).get(0);
+            sendKeysSlowly(attributeDescField, "album sales");
+            attributeDescField.sendKeys(Keys.DOWN);
+
+            waitForThenClick("span", "Band [Band] -> album sales [albumSales]");
+            scrollToBottom();
+            waitForThenClick("button", "Done");
+            waitForNoificationToClose();
+
+            // Add a message to the the new min constraint
+            waitForThenDoBackofficeSearch(id);
+            waitForThenClick("span", id);// 6.2 expects div
+            waitForTagXWithAttributeYWithValueZThenClick("button", "class", "yw-expandCollapse z-button");
+            pauseMS(PAUSE_MS);
+
+            WebElement errorMessageField = findElements(By.xpath("//div[text()='Is used in the following constraint groups']/preceding::input[1]")).get(0);
+            sendKeysSlowly(errorMessageField, "Album sales must not be negative" + Keys.RETURN);
+            waitForThenClick("button", "Save");
             waitForNoificationToClose();
         }
 
@@ -840,19 +798,19 @@ SeleniumHelper.java */
                 return;
             }
 
-            waitForTagXWithAttributeYWithValueZThenClick("a","class","ya-create-type-selector-button z-toolbarbutton");
+            waitForTagXWithAttributeYWithValueZThenClick("a", "class", "ya-create-type-selector-button z-toolbarbutton");
 
             waitForConstraintsMenu();
 
             scrollToBottom();
-            waitForTagXWithAttributeYWithValueZThenClick("tr","title","NotLoremIpsumConstraint");
+            waitForTagXWithAttributeYWithValueZThenClick("tr", "title", "NotLoremIpsumConstraint");
             waitForAllInputFields(19);
             scrollToBottom();
             List<WebElement> l = findElements(By.xpath("//input[@type='text']"));
             scrollToBottom();
 
             WebElement idInputField = waitUntilElements(By.xpath("//span[text()='ID:']/following::input[1]")).get(0);
-            clearField(idInputField, id+Keys.RETURN);
+            clearField(idInputField, id + Keys.RETURN);
 
 
             // Set Band [Bands]
@@ -860,9 +818,9 @@ SeleniumHelper.java */
             scrollToThenClick(dots);
             pauseMS(PAUSE_MS);
             WebElement identifierField = waitUntilElements(By.xpath("//span[text()='Identifier']/following::input[2]")).get(0);
-            identifierField.sendKeys("Band"+Keys.RETURN);
-            waitForThenClick("span","Band");// 6.2 expects div
-            waitForThenClick("button","Select (1)");
+            identifierField.sendKeys("Band" + Keys.RETURN);
+            waitForThenClick("span", "Band");// 6.2 expects div
+            waitForThenClick("button", "Select (1)");
             pauseMS(PAUSE_MS);
 
             waitForAllInputFields(19);
@@ -871,61 +829,61 @@ SeleniumHelper.java */
             dots = waitUntilElements(By.xpath("//span[text()='Attribute descriptor to validate:']/following::i[1]")).get(0);
             scrollToThenClick(dots);
             pauseMS(PAUSE_MS);
-            waitForThenClick("span","history");// 6.2 expects div
-            waitForThenClick("button","Select (1)");
+            waitForThenClick("span", "history");// 6.2 expects div
+            waitForThenClick("button", "Select (1)");
             pauseMS(PAUSE_MS);
 
-            waitForThenClick("button","Done");
+            waitForThenClick("button", "Done");
             waitForNoificationToClose();
 
             // Add a message to the the custom constraint
             waitForThenDoBackofficeSearch(id);
             waitForThenClick("span", id);// 6.2 expects div
-            waitForTagXWithAttributeYWithValueZThenClick("button","class","yw-expandCollapse z-button");
+            waitForTagXWithAttributeYWithValueZThenClick("button", "class", "yw-expandCollapse z-button");
             WebElement errorMessageField = findElements(By.xpath("//div[text()='Is used in the following constraint groups']/preceding::input[1]")).get(0);
             sendKeysSlowly(errorMessageField, "No Lorem Ipsum");
-            waitForThenClick("button","Save");
+            waitForThenClick("button", "Save");
             waitForNoificationToClose();
         }
 
         public static void addNewCustomConstraint61(String id) {
-            waitForTagXWithAttributeYWithValueZThenClick("a","class","ya-create-type-selector-button z-toolbarbutton");
+            waitForTagXWithAttributeYWithValueZThenClick("a", "class", "ya-create-type-selector-button z-toolbarbutton");
 
             waitForConstraintsMenu();
 
-            waitForTagXWithAttributeYWithValueZThenClick("tr","title","NotLoremIpsumConstraint");
+            waitForTagXWithAttributeYWithValueZThenClick("tr", "title", "NotLoremIpsumConstraint");
             pauseMS(1000);
 
             WebElement idInputField = findElements(By.xpath("//span[text()='ID:']/following::input[1]")).get(0);
             clearField(idInputField, id);
 
             WebElement enclosingTypeField = findElements(By.xpath("//span[text()='Enclosing Type:']/following::input[1]")).get(0);
-            enclosingTypeField.sendKeys("Band"+Keys.RETURN);
+            enclosingTypeField.sendKeys("Band" + Keys.RETURN);
             WebElement dots = findElements(By.xpath("//span[text()='Enclosing Type:']/following::i[1]")).get(0);
             scrollToThenClick(dots);
             pauseMS(PAUSE_MS);
 
-            waitForThenClick("span","Band [Band]");// 6.2 expects div
+            waitForThenClick("span", "Band [Band]");// 6.2 expects div
             pauseMS(PAUSE_MS);
 
             WebElement attributeDescField = findElements(By.xpath("//span[text()='Attribute descriptor to validate:']/following::input[1]")).get(0);
             sendKeysSlowly(attributeDescField, "history");
             attributeDescField.sendKeys(Keys.DOWN);
 
-            waitForThenClick("span","Band [Band] -> history [history]");
+            waitForThenClick("span", "Band [Band] -> history [history]");
             scrollToBottom();
-            waitForThenClick("button","Done");
+            waitForThenClick("button", "Done");
             waitForNoificationToClose();
 
             // Add a message to the the new min constraint
             waitForThenDoBackofficeSearch(id);
             waitForThenClick("span", id);// 6.2 expects div
-            waitForTagXWithAttributeYWithValueZThenClick("button","class","yw-expandCollapse z-button");
+            waitForTagXWithAttributeYWithValueZThenClick("button", "class", "yw-expandCollapse z-button");
             pauseMS(PAUSE_MS);
 
             WebElement errorMessageField = findElements(By.xpath("//div[text()='Is used in the following constraint groups']/preceding::input[1]")).get(0);
-            sendKeysSlowly(errorMessageField, "No Lorem Ipsum"+Keys.RETURN);
-            waitForThenClick("button","Save");
+            sendKeysSlowly(errorMessageField, "No Lorem Ipsum" + Keys.RETURN);
+            waitForThenClick("button", "Save");
             waitForNoificationToClose();
         }
 
@@ -937,20 +895,19 @@ SeleniumHelper.java */
         }
 
         public static void deleteExistingMinConstraint(String id) {
-            try{
+            try {
                 waitForThenClick("span", id);// 6.2 expects div
                 pauseMS(PAUSE_MS);
 
                 List<WebElement> bins = findElements(By.xpath("//img[contains(@src,'/backoffice/widgetClasspathResource/widgets/actions/deleteAction/icons/icon_action_delete_default.png')]"));
-                if (bins.size()==2)
+                if (bins.size() == 2)
                     scrollToThenClick(bins.get(1));
                 else
                     scrollToThenClick(bins.get(0));
 
                 waitForThenClickButtonWithText("Yes");
                 waitForNoificationToClose();
-            }
-            catch(Exception e){
+            } catch (Exception e) {
                 LOG.info(e.getMessage());
             }
         }
@@ -1001,7 +958,7 @@ SeleniumHelper.java */
             waitForThenClickButtonWithText("Save");
         }
 
-        public static boolean waitForConnectionToOpen(String url, int waitMS) throws Exception {
+        public static boolean waitForConnectionToOpen(String url, int waitMS) {
             try {
                 URL obj = new URL(url);
                 HttpURLConnection conn;
@@ -1015,8 +972,7 @@ SeleniumHelper.java */
                 // Read response
                 conn.getResponseCode();
                 return true;
-            }
-            catch(Exception e) {
+            } catch (Exception e) {
                 return false;
             }
         }
@@ -1025,8 +981,7 @@ SeleniumHelper.java */
             try {
                 getDriver().findElement(by).click();
                 return true;
-            }
-            catch (WebDriverException exc) {
+            } catch (WebDriverException exc) {
                 return false;
             }
         }
@@ -1038,8 +993,8 @@ SeleniumHelper.java */
             try {
                 WebElement element = findElement(by);
                 ((JavascriptExecutor) dvr).executeScript("arguments[0].style.display = 'none';", element);
+            } catch (Exception ignored) {
             }
-            catch(Exception e) {}
         }
 
         public static void closeBrowser() {
@@ -1054,7 +1009,7 @@ SeleniumHelper.java */
         }
 
         public static void takeScreenshot(String filepath) {
-            File screenshotFile = ((TakesScreenshot)getDriver()).getScreenshotAs(OutputType.FILE);
+            File screenshotFile = ((TakesScreenshot) getDriver()).getScreenshotAs(OutputType.FILE);
             try {
                 FileUtils.copyFile(screenshotFile, new File(filepath));
             } catch (IOException e) {
@@ -1065,13 +1020,13 @@ SeleniumHelper.java */
     }   // Gets replaced by CreateHybris123Pages
 
     @Before
-    public void allowHttps(){
+    public void allowHttps() {
         HttpsHelper.allowHttps();
         VersionHelper.getVersion();
     }
 
     @After
-    public void closeSelenium(){
+    public void closeSelenium() {
         try {
             closeBrowser();
         } catch (Exception e) {
@@ -1081,9 +1036,9 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testUnzippedOk")
-    public void testUnzippedOk() throws Exception {
+    public void testUnzippedOk() {
         assertTrue("The folder structure should be as shown in this method",
-                FileHelper.fileExists("../../HYBRISCOMM6*.zip")  &&
+                FileHelper.fileExists("../../HYBRISCOMM6*.zip") &&
                         FileHelper.fileExists("../../HYBRISCOMM6*/README") &&
                         FileHelper.fileExists("../../HYBRISCOMM6*/hybris123/src/main/java/com/hybris/hybris123/runtime/tests/Hybris123Tests.java")
         );
@@ -1091,10 +1046,10 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testAcceleratorQuickDiveIsOk")
-    public void testAcceleratorQuickDiveIsOk() throws Exception {
+    public void testAcceleratorQuickDiveIsOk() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/yb2bacceleratorstorefront/?site=powertools&clear=true");
-        assertTrue( getTitle().contains("Powertools") );
+        assertTrue(getTitle().contains("Powertools"));
         loginToBackOffice("English");
     }
 
@@ -1115,7 +1070,7 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testExtensionModelOk")
-    public void testExtensionModelOk() throws ClassNotFoundException, IOException {
+    public void testExtensionModelOk() throws IOException {
         assertTrue("ProductModel has not been extended to support Hashtag and Band",
                 FileHelper.fileContains("../hybris/bin/platform/bootstrap/gensrc/de/hybris/platform/core/model/product/ProductModel.java",
                         "getHashtag", "getBand",
@@ -1123,14 +1078,14 @@ SeleniumHelper.java */
 
         assertTrue("The new BandModel does not support Code, Name, History, AlbumSales",
                 FileHelper.fileContains("../hybris/bin/platform/bootstrap/gensrc/concerttours/model/BandModel.java",
-                        "getName","getHistory","getCode", "getAlbumSales",
-                        "setName","setHistory","setCode", "setAlbumSales"));
+                        "getName", "getHistory", "getCode", "getAlbumSales",
+                        "setName", "setHistory", "setCode", "setAlbumSales"));
 
         assertTrue("The new ConcertModel does not extend VariantProductModel or does not support Venue and Date",
-                FileHelper.fileContains( "../hybris/bin/platform/bootstrap/gensrc/concerttours/model/ConcertModel.java",
+                FileHelper.fileContains("../hybris/bin/platform/bootstrap/gensrc/concerttours/model/ConcertModel.java",
                         "ConcertModel extends VariantProductModel",
-                        "getVenue","getDate",
-                        "setVenue","setDate"));
+                        "getVenue", "getDate",
+                        "setVenue", "setDate"));
 
         assertTrue("The new Band does not extend GenericItem or does not support Code, Name, History, AlbumSales",
                 FileHelper.isBandCreated());
@@ -1146,7 +1101,7 @@ SeleniumHelper.java */
         // Note test will fail if the suite is running on this DB at the same time.
         try {
             String res = hsqldb.select("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.SYSTEM_COLUMNS WHERE TABLE_NAME NOT LIKE 'SYSTEM_%'");
-            assertTrue("Could not find the table BANDS",  res.contains("BANDS")  );
+            assertTrue("Could not find the table BANDS", res.contains("BANDS"));
         } catch (Exception e) {
             fail("testDatabaseSetup", "HsqlDBTest failed: " + e.getMessage());
         } finally {
@@ -1163,7 +1118,7 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testServiceLayerClassesExist")
-    public void testServiceLayerClassesExist() throws IOException {
+    public void testServiceLayerClassesExist() {
         // If you have correctly added an extension there should be some new folders and files
         assertTrue("You should have added concerttours.daos.BandDAO.java", FileHelper.fileExistsAndContains(
                 "../hybris/bin/custom/concerttours/src/concerttours/daos/BandDAO.java", "public interface BandDAO"));
@@ -1179,8 +1134,8 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testBackOffice")
-    public void testBackOffice() throws Exception {
-        assertTrue( loginToBackOffice() );
+    public void testBackOffice() {
+        assertTrue(loginToBackOffice());
     }
 
     @Test
@@ -1198,13 +1153,13 @@ SeleniumHelper.java */
         waitForThenClickMenuItem("System");
         waitForThenClickMenuItem("Types");
         waitForThenDoBackofficeSearch("Band");
-        waitForThenClick("span","Band");
+        waitForThenClick("span", "Band");
         waitForImageWithTitleThenClick("Search by type");
         waitForThenDoBackofficeSearch("");
-        waitForThenClick("span","The Quiet");
+        waitForThenClick("span", "The Quiet");
 
         waitForThenUpdateInputField("The Quiet", "The Choir");
-        assertTrue( waitForThenClick("button","Save") );
+        assertTrue(waitForThenClick("button", "Save"));
     }
 
     @Test
@@ -1222,7 +1177,7 @@ SeleniumHelper.java */
         loginToBackOffice();
         selectConstraintsPage();
         tryToViolateTheNewConstraint();
-        assertTrue( waitFor("span","Album sales must not be negative"));
+        assertTrue(waitFor("span", "Album sales must not be negative"));
     }
 
     @Test
@@ -1234,14 +1189,14 @@ SeleniumHelper.java */
         addNewCustomConstraint("NotIpsum");
         reloadConstraints();
         tryToViolateTheNewCustomConstraint();
-        assertTrue( waitFor("span","No Lorem Ipsum"));
+        assertTrue(waitFor("span", "No Lorem Ipsum"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testPropertiesFiles")
     public void testPropertiesFiles() {
         assertTrue(
-                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandFacadeIntegrationWithPropertiesTest\" package=\"concerttours.facades.impl\" tests=\"1\"(.*)") );
+                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandFacadeIntegrationWithPropertiesTest\" package=\"concerttours.facades.impl\" tests=\"1\"(.*)"));
     }
 
     @Test
@@ -1249,48 +1204,48 @@ SeleniumHelper.java */
     public void testValidationConstraintAfterImpex() {
         loginToBackOffice();
         modifyABandToHaveNegativeAlbumSales();
-        waitFor("div","You have 1 Validation Errors");
-        assertTrue( waitFor("span","Album sales must not be negative"));
+        waitFor("div", "You have 1 Validation Errors");
+        assertTrue(waitFor("span", "Album sales must not be negative"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testSuiteIsOnline")
     public void testSuiteIsOnline() {
-        assertTrue( canLoginToHybrisCommerce());
+        assertTrue(canLoginToHybrisCommerce());
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testDynamicAttributeView")
-    public void testDynamicAttributeView() throws Exception {
+    public void testDynamicAttributeView() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/concerttours/bands/A001");
-        waitFor("a","The Grand Little x Tour");
+        waitFor("a", "The Grand Little x Tour");
         navigateTo("https://localhost:9002/concerttours/tours/201701");
-        waitFor("th","Days Until");
-        assertTrue( waitFor("td","0"));
+        waitFor("th", "Days Until");
+        assertTrue(waitFor("td", "0"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testBandImages")
-    public void testBandImages() throws Exception {
+    public void testBandImages() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/concerttours/bands");
         waitForValidImage();
         navigateTo("https://localhost:9002/concerttours/bands/A006");
-        assertTrue( waitForValidImage());
+        assertTrue(waitForValidImage());
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_loginAndCheckForConcertToursExtension")
-    public void loginAndCheckForConcertToursExtension()  {
+    public void loginAndCheckForConcertToursExtension() {
         canLoginToHybrisCommerce();
-        navigateTo("https://localhost:9002/platform/extensions") ;
-        assertTrue( waitForExtensionListing("concerttours"));
+        navigateTo("https://localhost:9002/platform/extensions");
+        assertTrue(waitForExtensionListing("concerttours"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testNewsEvents")
-    public void testNewsEvents()  {
+    public void testNewsEvents() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/platform/init");
         waitForThenClickButtonWithText("Initialize");
@@ -1301,12 +1256,12 @@ SeleniumHelper.java */
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/console/flexsearch");
         waitForFlexQueryFieldThenSubmit("SELECT {headline} FROM {News}");
-        assertTrue( waitFor("td","New band, Banned"));
+        assertTrue(waitFor("td", "New band, Banned"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_simulateInitialization")
-    public void simulateInitialization() throws Exception {
+    public void simulateInitialization() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/platform/init");
         waitForThenClickButtonWithText("Initialize");
@@ -1322,15 +1277,15 @@ SeleniumHelper.java */
         String impex = FileHelper.getContents("src/main/webapp/resources/concerttours/resources/script/essentialdataJobs.impex");
         navigateTo("https://localhost:9002/console/impex/import");
         submitImpexScript(impex);
-        waitFor("div","Import finished successfully");
+        waitFor("div", "Import finished successfully");
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testSendingNewsMails")
     public void testSendingNewsMails() throws Exception {
         long timeSinceLastMailWasSentMS = LogHelper.getMSSinceLastNewsMailsLogged();
-        assertTrue("A log of the last mail sent should have been timestamped recently "+timeSinceLastMailWasSentMS,
-                timeSinceLastMailWasSentMS < 5*60*1000);
+        assertTrue("A log of the last mail sent should have been timestamped recently " + timeSinceLastMailWasSentMS,
+                timeSinceLastMailWasSentMS < 5 * 60 * 1000);
     }
 
     @Test
@@ -1342,7 +1297,7 @@ SeleniumHelper.java */
         waitForThenClickOkInAlertWindow();
         waitForInitToComplete();
         long timeSinceHookLogsFound = LogHelper.getMSSinceThisWasLogged("Custom project data loading for the Concerttours extension completed");
-        assertTrue("Did not find the expected logs "+ timeSinceHookLogsFound,
+        assertTrue("Did not find the expected logs " + timeSinceHookLogsFound,
                 timeSinceHookLogsFound < 10000);
     }
 
@@ -1366,21 +1321,21 @@ SeleniumHelper.java */
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/console/impex/import");
         submitImpexScript(impex);
-        waitFor("div","Import finished successfully");
+        waitFor("div", "Import finished successfully");
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testManualImpex")
-    public void testManualImpex() throws Exception {
+    public void testManualImpex() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/console/flexsearch");
         waitForFlexQueryFieldThenSubmit("SELECT {pk}, {code}, {history} FROM {Band}");
-        assertTrue( waitFor("td","A cappella singing group based in Munich"));
+        assertTrue(waitFor("td", "A cappella singing group based in Munich"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testCoCImpex")
-    public void testCoCImpex() throws Exception {
+    public void testCoCImpex() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/platform/init");
         waitForThenClickButtonWithText("Initialize");
@@ -1391,82 +1346,82 @@ SeleniumHelper.java */
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/console/flexsearch");
         waitForFlexQueryFieldThenSubmit("SELECT {pk}, {code}, {history} FROM {Band}");
-        assertTrue( waitFor("td","A cappella singing group based in Munich"));
+        assertTrue(waitFor("td", "A cappella singing group based in Munich"));
     }
 
     // See  https://wiki.hybris.com/display/release5/hybris+Testweb+Frontend+-+End+User+Guide
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testServiceLayerIntegrationTest")
-    public void testServiceLayerIntegrationTest() throws Exception {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandDAOIntegrationTest\" package=\"concerttours.daos.impl\" tests=\"3\"(.*)" ) &&
-                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandServiceIntegrationTest\" package=\"concerttours.service.impl\" tests=\"3\"(.*)" ));
+    public void testServiceLayerIntegrationTest() {
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandDAOIntegrationTest\" package=\"concerttours.daos.impl\" tests=\"3\"(.*)") &&
+                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandServiceIntegrationTest\" package=\"concerttours.service.impl\" tests=\"3\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testCustomConstraintIntegrationTest")
     public void testCustomConstraintIntegrationTest() {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"NotLoremIpsumConstraintTest\" package=\"concerttours.constraints\" tests=\"1\"(.*)" ));
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"NotLoremIpsumConstraintTest\" package=\"concerttours.constraints\" tests=\"1\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testLocalizedServiceLayerTest")
     public void testLocalizedServiceLayerTest() {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"2\" (.*) name=\"DefaultBandFacadeUnitTest\" package=\"concerttours.facades.impl\" tests=\"2\" (.*)") &&
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"2\" (.*) name=\"DefaultBandFacadeUnitTest\" package=\"concerttours.facades.impl\" tests=\"2\" (.*)") &&
                 checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandServiceUnitTest\" package=\"concerttours.service.impl\" tests=\"2\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testFacadeLayerOk")
-    public void testFacadeLayerOk()  {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandFacadeIntegrationTest\" package=\"concerttours.facades.impl\" tests=\"3\"(.*)" ) );
+    public void testFacadeLayerOk() {
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandFacadeIntegrationTest\" package=\"concerttours.facades.impl\" tests=\"3\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testWebAppComponent")
-    public void testWebAppComponent() throws Exception {
+    public void testWebAppComponent() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/concerttours/bands");
-        waitFor("a","The Quiet");
+        waitFor("a", "The Quiet");
         navigateTo("https://localhost:9002/concerttours/bands/A007");
-        assertTrue( waitFor("p","English choral society specialising in beautifully arranged, soothing melodies and songs"));
+        assertTrue(waitFor("p", "English choral society specialising in beautifully arranged, soothing melodies and songs"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testServiceLayerUnitTest")
-    public void testServiceLayerUnitTest()  {
-        assertTrue( checkTestSuiteXMLMatches("(.*)<testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandServiceUnitTest\" package=\"concerttours.service.impl\"(.*)" ));
+    public void testServiceLayerUnitTest() {
+        assertTrue(checkTestSuiteXMLMatches("(.*)<testsuite errors=\"0\" failures=\"0\" (.*) name=\"DefaultBandServiceUnitTest\" package=\"concerttours.service.impl\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testDynamicAttributeIntegrationTest")
-    public void testDynamicAttributeIntegrationTest()  {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"ConcertDaysUntilAttributeHandlerIntegrationTest\" package=\"concerttours.attributehandlers\" tests=\"3\" (.*)" ));
+    public void testDynamicAttributeIntegrationTest() {
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"ConcertDaysUntilAttributeHandlerIntegrationTest\" package=\"concerttours.attributehandlers\" tests=\"3\" (.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testDynamicAttributeUnitTest")
-    public void testDynamicAttributeUnitTest()  {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"ConcertDaysUntilAttributeHandlerUnitTest\" package=\"concerttours.attributehandlers\" tests=\"3\" (.*)" ));
+    public void testDynamicAttributeUnitTest() {
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"ConcertDaysUntilAttributeHandlerUnitTest\" package=\"concerttours.attributehandlers\" tests=\"3\" (.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testEventInterceptorIntegrationTest")
     public void testEventInterceptorIntegrationTest() {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"BandAlbumSalesEventListenerIntegrationTest\" package=\"concerttours.events\" tests=\"2\" (.*)" ));
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"BandAlbumSalesEventListenerIntegrationTest\" package=\"concerttours.events\" tests=\"2\" (.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testAsyncEventInterceptorIntegrationTest")
-    public void testAsyncEventInterceptorIntegrationTest()  {
+    public void testAsyncEventInterceptorIntegrationTest() {
         assertTrue(
-                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"BandAlbumSalesEventListenerIntegrationTest\" package=\"concerttours.events\" tests=\"2\" (.*)" ) &&
+                checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"BandAlbumSalesEventListenerIntegrationTest\" package=\"concerttours.events\" tests=\"2\" (.*)") &&
                         checkTestSuiteXMLMatches("(.*)testcase classname=\"concerttours.events.BandAlbumSalesEventListenerIntegrationTest\" name=\"testEventSendingAsync\"(.*)"));
     }
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testSendNewsJobIntegrationTest")
     public void testSendNewsJobIntegrationTest() {
-        assertTrue( checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"SendNewsJobIntegrationTest\" package=\"concerttours.jobs\" tests=\"2\" (.*)" ));
+        assertTrue(checkTestSuiteXMLMatches("(.*)testsuite errors=\"0\" failures=\"0\" (.*) name=\"SendNewsJobIntegrationTest\" package=\"concerttours.jobs\" tests=\"2\" (.*)"));
     }
 
     @Test
@@ -1480,11 +1435,11 @@ SeleniumHelper.java */
 
     @Test
     @Snippet("com.hybris.hybris123.Hybris123Tests_testGroovyScript")
-    public void testGroovyScript() throws Exception {
+    public void testGroovyScript() {
         canLoginToHybrisCommerce();
         navigateTo("https://localhost:9002/console/flexsearch");
         waitForFlexQueryFieldThenSubmit("SELECT {p.pk}, {p.code}, {p.name}, {q.code} FROM {Concert AS p}, {ArticleApprovalStatus AS q} WHERE {p.approvalstatus} = {q.pk}");
-        assertTrue( waitForText("check") );
+        assertTrue(waitForText("check"));
     }
 
     @Test
@@ -1505,7 +1460,7 @@ SeleniumHelper.java */
         waitForThenAndClickSpan("Eigenschaften");
         waitForThenClickDotsBySpan("daysUntil");
         waitForThenAndClickSpan("Details bearbeiten", "Edit Details");
-        assertTrue( waitForValue("input", "Tage bis es stattfindet") );
+        assertTrue(waitForValue("input", "Tage bis es stattfindet"));
     }
 
     @Test
@@ -1539,25 +1494,24 @@ SeleniumHelper.java */
 
     private static void assertTrue(String message, boolean condition) {
         String methodName = getMethodName();
-        try{
+        try {
             org.junit.Assert.assertTrue(message, condition);
-            updateTestStatus( "com.hybris.hybris123.Hybris123Tests_"+methodName, "passed");
-        }
-        catch(Error | Exception e){
-            updateTestStatus( "com.hybris.hybris123.Hybris123Tests_"+methodName, "failed");
+            updateTestStatus("com.hybris.hybris123.Hybris123Tests_" + methodName, "passed");
+        } catch (Error | Exception e) {
+            updateTestStatus("com.hybris.hybris123.Hybris123Tests_" + methodName, "failed");
             org.junit.Assert.fail(message);
         }
     }
 
     public static void fail(String callingMethod, String message) {
         LOG.debug("In fail {} {}", callingMethod, message);
-        updateTestStatus( "com.hybris.hybris123.Hybris123Tests_"+callingMethod, "failed");
+        updateTestStatus("com.hybris.hybris123.Hybris123Tests_" + callingMethod, "failed");
         org.junit.Assert.fail(message);
         try {
             if (WAITONFAIL)
                 Thread.sleep(500000);
         } catch (InterruptedException e) {
-            LOG.error( e.getMessage() );
+            LOG.error(e.getMessage());
         }
     }
 
@@ -1565,19 +1519,19 @@ SeleniumHelper.java */
         fail(callingMethod, null);
     }
 
-    private static void updateTestStatus(String name, String status){
+    private static void updateTestStatus(String name, String status) {
         try {
-            waitForConnectionToOpen("http://localhost:8080/hybris123/tdd?test=updatelog&testName="+name+"&testStatus="+status, 1000);
+            waitForConnectionToOpen("http://localhost:8080/hybris123/tdd?test=updatelog&testName=" + name + "&testStatus=" + status, 1000);
         } catch (Exception e) {
             LOG.error(e.getMessage());
         }
     }
 
-    public static boolean fileExists(String s){
+    public static boolean fileExists(String s) {
         return FileHelper.fileExists(s);
     }
 
-    public static String runCmd(String s){
+    public static String runCmd(String s) {
         return CommandLineHelper.runCmd(s);
     }
 }
@@ -1586,9 +1540,7 @@ SeleniumHelper.java */
 CommandLineHelper.java */
 
 
-
-
-
+@SuppressWarnings({"WeakerAccess", "UnusedAssignment"})
 class CommandLineHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(CommandLineHelper.class);
@@ -1596,13 +1548,13 @@ class CommandLineHelper {
     private CommandLineHelper() {
     }
 
-    public static String runCmd(String cmd){
+    public static String runCmd(String cmd) {
         String output = "";
         try {
             if (!cmd.equals("git --git-dir ../hybris/.git log") &&
                     !cmd.equals("mvn.cmd --version") &&
                     !cmd.equals("mvn --version") &&
-                    !cmd.equals("git --version") )
+                    !cmd.equals("git --version"))
                 throw new IllegalArgumentException("Command not the one expected");
 
             Process p = Runtime.getRuntime().exec(cmd);
@@ -1628,24 +1580,24 @@ class CommandLineHelper {
 FileHelper.java */
 
 
-
-
+@SuppressWarnings({"WeakerAccess", "ConstantConditions", "FieldCanBeLocal", "unused"})
 class FileHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(FileHelper.class);
 
     private static boolean STATICVERSION = true;
 
-    public  static String getPath(String file) {
+    public static String getPath(String file) {
         String s = new File(file).getAbsolutePath();
-        if (s.lastIndexOf('/')!=-1)
+        if (s.lastIndexOf('/') != -1)
             s = s.substring(0, s.lastIndexOf('/'));
-        if (s.lastIndexOf('\\')!=-1)
+        if (s.lastIndexOf('\\') != -1)
             s = s.substring(0, s.lastIndexOf('\\'));
         return s;
     }
+
     public static String getContents(String file) throws IOException {
-        if (STATICVERSION){
+        if (STATICVERSION) {
             if (file.equals("src/main/webapp/resources/impex/essentialdata-bands.impex"))
                 return InPlaceContents.essentialdatabandsimpex;
             if (file.equals("src/main/webapp/resources/concerttours/resources/script/essentialdataJobs.impex"))
@@ -1653,7 +1605,7 @@ class FileHelper {
             if (file.equals("src/main/webapp/resources/concerttours/resources/script/groovyjob.script"))
                 return InPlaceContents.groovyjobscript.replaceAll("'", "\"");
         }
-        String impex = new String(Files.readAllBytes(new File(file).toPath()), ("UTF-8"));
+        String impex = new String(Files.readAllBytes(new File(file).toPath()), StandardCharsets.UTF_8);
         impex = impex.replace("\r", "");
         return impex;
     }
@@ -1666,12 +1618,11 @@ class FileHelper {
                 reduce("", (x, y) -> x.concat("\n").concat(y));
 
 
-
         // Remove copyright lines
         s = s.replaceAll(" \\* © 2017 SAP SE or an SAP affiliate company.(.*)\n", new File(file).getName());
-        s = s.replaceAll(" \\* All rights reserved.(.*)\n",  "");
-        s = s.replaceAll(" \\* Please see http://www.sap.com/corporate-en/legal/copyright/index.epx for additional trademark information and(.*)\n",  "");
-        s = s.replaceAll(" \\* notices.(.*)\n",  "");
+        s = s.replaceAll(" \\* All rights reserved.(.*)\n", "");
+        s = s.replaceAll(" \\* Please see http://www.sap.com/corporate-en/legal/copyright/index.epx for additional trademark information and(.*)\n", "");
+        s = s.replaceAll(" \\* notices.(.*)\n", "");
         return s;
     }
 
@@ -1751,7 +1702,7 @@ class FileHelper {
         return true;
     }
 
-    public static boolean isBandCreated() throws IOException {
+    public static boolean isBandCreated() {
 		/*String shortName = VersionHelper.getVersion().equals(Version.V1811) ? "Band.java" : "GeneratedBand.java";
 		String longName = "../hybris/bin/custom/concerttours/gensrc/concerttours/jalo/" + shortName;
 
@@ -1761,7 +1712,7 @@ class FileHelper {
         return true;
     }
 
-    public static boolean isConcertCreated() throws IOException {
+    public static boolean isConcertCreated() {
 		/*String shortName =  VersionHelper.getVersion().equals(Version.V1811) ? "Concert.java" : "GeneratedConcert.java";
 		String longName = "../hybris/bin/custom/concerttours/gensrc/concerttours/jalo/" + shortName;
 
@@ -1771,16 +1722,16 @@ class FileHelper {
     }
 
     public static String prepareForInsiderQuotes(String s) {
-        return s.trim().replaceAll("\"","'").replaceAll("\n", "\\\\n");
+        return s.trim().replaceAll("\"", "'").replaceAll("\n", "\\\\n");
     }
 
 
-    public static boolean dirIsNotEmpty(String dir){
+    public static boolean dirIsNotEmpty(String dir) {
         return new File(dir).list().length > 0;
 
     }
 
-    public static boolean dirIsEmpty(String dir){
+    public static boolean dirIsEmpty(String dir) {
         return new File(dir).list().length == 0;
 
     }
@@ -1791,10 +1742,10 @@ class FileHelper {
 HsqlDBHelper.java */
 
 
-
 /**
  * A helper to allow users to directly invoke HSQL queries from hybris123
  */
+@SuppressWarnings({"WeakerAccess", "SqlNoDataSourceInspection", "unused"})
 class HsqlDBHelper {
     private Connection conn;
     private static final String HSQLDB = "jdbc:hsqldb:file:./../hybris/data/hsqldb/mydb;hsqldb.tx=mvcc;shutdown=true;hsqldb.log_size=8192;hsqldb.large_data=true";
@@ -1803,7 +1754,7 @@ class HsqlDBHelper {
     public HsqlDBHelper() throws ClassNotFoundException, SQLException {
         Class.forName("org.hsqldb.jdbcDriver");        // Loads the HSQL Database Engine JDBC driver
         // !!Note that leaving your default password as the empty string in production would be a major security risk!!
-        conn = DriverManager.getConnection(HSQLDB,  "sa",   "");
+        conn = DriverManager.getConnection(HSQLDB, "sa", "");
     }
 
     public void shutdown() throws SQLException {
@@ -1813,8 +1764,8 @@ class HsqlDBHelper {
     }
 
     public synchronized String select(String expression) throws SQLException {
-        Statement st = null;
-        ResultSet rs = null;
+        Statement st;
+        ResultSet rs;
         st = conn.createStatement();
         rs = st.executeQuery(expression);
         String res = dump(rs);
@@ -1828,11 +1779,11 @@ class HsqlDBHelper {
         int i;
         String o;
         String result = "";
-        while(rs.next()) {
+        while (rs.next()) {
             for (i = 1; i <= colmax; i++) {
                 if (i > 1)
                     result = result.concat(" ");
-                o = (rs.getObject(i) == null) ? "NULL": rs.getObject(i).toString();
+                o = (rs.getObject(i) == null) ? "NULL" : rs.getObject(i).toString();
                 result = result.concat(o);
             }
             result = result.concat("\n");
@@ -1845,9 +1796,7 @@ class HsqlDBHelper {
 HttpsHelper.java */
 
 
-
-
-
+@SuppressWarnings({"WeakerAccess", "UnnecessaryLocalVariable"})
 class HttpsHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpsHelper.class);
@@ -1864,14 +1813,14 @@ class HttpsHelper {
             HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
 
             CookieHandler.setDefault(new CookieManager(null, null));
-        } catch(Exception e) {
+        } catch (Exception e) {
             LOG.error(e.getMessage());
         }
 
     }
 
     public static TrustManager[] get_trust_mgr() {
-        TrustManager[] certs = new TrustManager[] { new X509TrustManager() {
+        TrustManager[] certs = new TrustManager[]{new X509TrustManager() {
             @Override
             public X509Certificate[] getAcceptedIssuers() {
                 return null;
@@ -1884,7 +1833,7 @@ class HttpsHelper {
             @Override
             public void checkServerTrusted(X509Certificate[] certs, String t) {
             }
-        } };
+        }};
         return certs;
     }
 }
@@ -1893,7 +1842,7 @@ class HttpsHelper {
 LogHelper.java */
 
 
-
+@SuppressWarnings("WeakerAccess")
 class LogHelper {
     private static final Logger LOG = LoggerFactory.getLogger(LogHelper.class);
 
@@ -1927,6 +1876,7 @@ class LogHelper {
 
         return msSinceLastLogLine;
     }
+
     public static long getMSSinceLastNewsMailsLogged() throws Exception {
         return getMSSinceThisWasLogged("Sending news mails");
     }
@@ -1949,25 +1899,27 @@ class LogHelper {
 Snippet.java */
 
 @interface Snippet {
-    public String value() default "";
+    String value() default "";
 }
 
 
+@SuppressWarnings("unused")
 enum Version {
     V6000, V6100, V6200, V6300, V6400, V6500, V6600, V6700, V1808, V1811, V1905, UNDEFINED
 }
 
 
-
-
+@SuppressWarnings({"WeakerAccess", "OptionalGetWithoutIsPresent"})
 class VersionHelper {
 
     private static final Logger LOG = LoggerFactory.getLogger(VersionHelper.class);
 
-    private VersionHelper() {}
+    private VersionHelper() {
+    }
 
     /**
      * old format: 6.X.0.0, new format: YY.MM or YYMM
+     *
      * @return enum matching the format Vdddd
      */
     public static Version getVersion() {
@@ -1977,21 +1929,18 @@ class VersionHelper {
             versionString = "V" + versionString.replaceAll("[^0-9]", "").substring(0, 4);
             LOG.info("Commerce123 version is: {}", versionString);
             return Version.valueOf(versionString);
-        }
-        catch (EnumConstantNotPresentException exc) {
+        } catch (EnumConstantNotPresentException exc) {
             String wrongConstant = exc.constantName();
             if (wrongConstant.startsWith("V6")) {
                 // given version is probably not from a release ZIP
                 String likelyValue = wrongConstant.substring(0, 3) + "00";
                 try {
                     return Version.valueOf(likelyValue);
-                }
-                catch (EnumConstantNotPresentException ex) {
+                } catch (EnumConstantNotPresentException ex) {
                     return Version.UNDEFINED;
                 }
             }
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             LOG.error("Version not found. Please make sure hybris123 is placed in the SAP Commerce directory.");
             LOG.error("If hybris123 is placed correctly,"
                     + " check whether [HYBRIS_HOME_DIR]/hybris/bin/platform/build.number contains a version number.");
@@ -2004,9 +1953,9 @@ class VersionHelper {
 
 interface InPlaceContents {
     // Gets relaced by CreateHybris123Pages
-    public String essentialdatabandsimpex ="# Hybris123File \n# ImpEx for Importing Bands into Little Concert Tours Store\n \nINSERT_UPDATE Band;code[unique=true];name;albumSales;history\n;A001;yRock;1000000;Occasional tribute rock band comprising senior managers from a leading commerce software vendor\n;A006;yBand;;Dutch tribute rock band formed in 2013 playing classic rock tunes from the sixties, seventies and eighties\n;A003;yJazz;7;Experimental Jazz group from London playing many musical notes together in unexpected combinations and sequences\n;A004;Banned;427;Rejuvenated Polish boy band from the 1990s - this genre of pop music at its most dubious best\n;A002;Sirken;2000;A cappella singing group based in Munich; an uplifting blend of traditional and contemporaneous songs\n;A005;The Choir;49000;Enthusiastic, noisy gospel choir singing traditional gospel songs from the deep south\n;A007;The Quiet;1200;English choral society specialising in beautifully arranged, soothing melodies and songs";
+    String essentialdatabandsimpex = "# Hybris123File \n# ImpEx for Importing Bands into Little Concert Tours Store\n \nINSERT_UPDATE Band;code[unique=true];name;albumSales;history\n;A001;yRock;1000000;Occasional tribute rock band comprising senior managers from a leading commerce software vendor\n;A006;yBand;;Dutch tribute rock band formed in 2013 playing classic rock tunes from the sixties, seventies and eighties\n;A003;yJazz;7;Experimental Jazz group from London playing many musical notes together in unexpected combinations and sequences\n;A004;Banned;427;Rejuvenated Polish boy band from the 1990s - this genre of pop music at its most dubious best\n;A002;Sirken;2000;A cappella singing group based in Munich; an uplifting blend of traditional and contemporaneous songs\n;A005;The Choir;49000;Enthusiastic, noisy gospel choir singing traditional gospel songs from the deep south\n;A007;The Quiet;1200;English choral society specialising in beautifully arranged, soothing melodies and songs";
     // Gets relaced by CreateHybris123Pages
-    public String essentialdatajobsimpex = "# Hybris123SnippetStart essentialdataJobs\n# Define the cron job and the job that it wraps\nINSERT_UPDATE CronJob; code[unique=true];job(code);singleExecutable;sessionLanguage(isocode)\n;sendNewsCronJob;sendNewsJob;false;de\n \n# Define the trigger that periodically invokes the cron job\nINSERT_UPDATE Trigger;cronjob(code)[unique=true];cronExpression\n#% afterEach: impex.getLastImportedItem().setActivationTime(new Date());\n; sendNewsCronJob; 0/10 * * * * ?\n\n# Hybris123SnippetEnd";
+    String essentialdatajobsimpex = "# Hybris123SnippetStart essentialdataJobs\n# Define the cron job and the job that it wraps\nINSERT_UPDATE CronJob; code[unique=true];job(code);singleExecutable;sessionLanguage(isocode)\n;sendNewsCronJob;sendNewsJob;false;de\n \n# Define the trigger that periodically invokes the cron job\nINSERT_UPDATE Trigger;cronjob(code)[unique=true];cronExpression\n#% afterEach: impex.getLastImportedItem().setActivationTime(new Date());\n; sendNewsCronJob; 0/10 * * * * ?\n\n# Hybris123SnippetEnd";
     // Gets relaced by CreateHybris123Pages
-    public String groovyjobscript = "// Hybris123SnippetStart groovyjob\nimport de.hybris.platform.cronjob.enums.*\nimport de.hybris.platform.servicelayer.cronjob.PerformResult\nimport de.hybris.platform.servicelayer.search.*\nimport de.hybris.platform.servicelayer.model.*\nimport de.hybris.platform.catalog.enums.ArticleApprovalStatus \nimport concerttours.model.ConcertModel\n  \nsearchService = spring.getBean('flexibleSearchService')\nmodelService = spring.getBean('modelService')\nquery = new FlexibleSearchQuery('Select {pk} from {Concert}');\nsearchService.search(query).getResult().each {\n  if (it.daysUntil < 1) \n  { \n    it.approvalStatus = ArticleApprovalStatus.CHECK\n  }\n  modelService.saveAll()\n}\n\n// Hybris123SnippetEnd";
+    String groovyjobscript = "// Hybris123SnippetStart groovyjob\nimport de.hybris.platform.cronjob.enums.*\nimport de.hybris.platform.servicelayer.cronjob.PerformResult\nimport de.hybris.platform.servicelayer.search.*\nimport de.hybris.platform.servicelayer.model.*\nimport de.hybris.platform.catalog.enums.ArticleApprovalStatus \nimport concerttours.model.ConcertModel\n  \nsearchService = spring.getBean('flexibleSearchService')\nmodelService = spring.getBean('modelService')\nquery = new FlexibleSearchQuery('Select {pk} from {Concert}');\nsearchService.search(query).getResult().each {\n  if (it.daysUntil < 1) \n  { \n    it.approvalStatus = ArticleApprovalStatus.CHECK\n  }\n  modelService.saveAll()\n}\n\n// Hybris123SnippetEnd";
 }
