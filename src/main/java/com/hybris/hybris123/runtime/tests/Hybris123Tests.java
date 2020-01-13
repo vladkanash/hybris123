@@ -89,7 +89,7 @@ public class Hybris123Tests {
         private static WebDriver dvr = null;
 
         private static final String yUSERNAME = "admin";
-        private static final String yPASSWORD = System.getenv("INITIAL_ADMIN");
+        private static final String yPASSWORD = "nimda";
 
         private static Wait<WebDriver> wait;
         private static Wait<WebDriver> longWait;
